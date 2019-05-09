@@ -59,10 +59,10 @@ scrapy crawl quotes -o quotes-humor.json -a tag=humor
 
 [Web Scraping Reference: A Simple Cheat Sheet for Web Scraping with Python](https://blog.hartleybrody.com/web-scraping-cheat-sheet/) por Hartley Brody. Acessado em 09/05/2019.
 
-[Beautiful Soup 4 Cheatsheet](http://akul.me/blog/2016/beautifulsoup-cheatsheet/)
+[Beautiful Soup 4 Cheatsheet](http://akul.me/blog/2016/beautifulsoup-cheatsheet/). Acessado em 09/05/2019.
 
-[W3Schools Css Selectors](https://www.w3schools.com/cssref/css_selectors.asp)
+[W3Schools Css Selectors](https://www.w3schools.com/cssref/css_selectors.asp). Acessado em 09/05/2019.
 
-[Scrapy's Framework Documentation](https://docs.scrapy.org/en/latest/index.html)
+[Scrapy's Framework Documentation](https://docs.scrapy.org/en/latest/index.html). Acessado em 09/05/2019.
 
 ## Agradecimentos
