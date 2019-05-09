@@ -10,6 +10,7 @@ from selenium.common.exceptions import NoSuchElementException
 
 from bs4 import BeautifulSoup
 import time
+import os
 
 
 class ProjetosinapseSpider(scrapy.Spider):
@@ -34,22 +35,33 @@ class ProjetosinapseSpider(scrapy.Spider):
         for project_page in URLS:
             yield scrapy.Request(project_page, callback=self.parse_project_page)
 
-        print('Quantidade de paginas: ',qtd_paginas)
-        # for i in range(2,qtd_paginas):
-        #     pagination = browser.find_element_by_css_selector('ul.pagination')
-        #     caminho = f'//*/a[contains(text(),\'{i}\')]'
-        #     a = pagination.find_element_by_xpath(caminho)
-        #     a.click()
-        #     element_present = EC.presence_of_element_located((By.CLASS_NAME, 'list-ideas-inner'))
-        #     wait = WebDriverWait(browser, 10).until(element_present)
-        #     URLS = self.get_links(browser.page_source)
-        #     time.sleep(15)
+        follow_links = getattr(self, 'follow', False)
+
+        if follow_links : 
+            qtd_total = getattr(self, 'pages', qtd_paginas)
+            print('Quantidade de paginas: ',qtd_paginas)
+            for i in range(2,qtd_total):
+                
+                pagination = self.browser.find_element_by_css_selector('ul.pagination')
+                caminho = f'//*/a[contains(text(),\'{i}\')]'
+                a = pagination.find_element_by_xpath(caminho)
+                a.click()
+                
+                element_present = EC.presence_of_element_located((By.CLASS_NAME, 'list-ideas-inner'))
+                WebDriverWait(self.browser, 10).until(element_present)
+                
+                URLS = self.get_links(self.browser.page_source,response.url)
+                for project_page in URLS:
+                    yield scrapy.Request(project_page, callback=self.parse_project_page)
 
     def parse_project_page(self,response):
         page = response.url.split("/")[-1]
         filename = 'quotes-%s.html' % page
-        with open(filename, 'wb') as f:
+        diretorio = os.path.join('data','web',filename)
+        with open(diretorio, 'wb') as f:
             f.write(response.body)
+
+        # soup = BeautifulSoup(response.body,'html.parser')
 
     def get_links(self,page,url_root):
         list_urls = list()
@@ -58,7 +70,7 @@ class ProjetosinapseSpider(scrapy.Spider):
         div = soup.find_all("div", attrs={"class": "list-ideas-inner"})     
 
         for p in div:            
-            for index, child in enumerate(p.findChildren('a')):                                
+            for _, child in enumerate(p.findChildren('a')):                                
                 if 'media' in child.get('class',[]):
                     url_idea = url_root + child['href']                                        
                     list_urls.append(url_idea)
