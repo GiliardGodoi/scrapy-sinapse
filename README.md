@@ -6,7 +6,7 @@ Este projeto utilizao *framework Scrapy* e *Selenium* para realizar a captura da
 
 ## Configurando Ambiente
 
-O arquivo para criar o ambiente com as depêndencias necessárias foram criadas da seguinte forma.
+O arquivo para com as depêndencias necessárias, foi criado da seguinte forma:
 
 ```python
 conda env export > <environment-name>.yml
@@ -19,13 +19,17 @@ O ambiente pode ser criado da seguinte forma
 conda env create -f <environment-name>.yml
 ```
 
-Para rodar o projeto é necessário possuir a extensão *chromedriver* para o Selenium incluido no PATH do sistema operacional. <Não consegui fazer de forma diferente>.
+Também é necessário possuir a extensão *chromedriver* para o Selenium incluido no PATH do sistema operacional. <Não consegui fazer de forma diferente>.
 
 A extensão pode ser obtida neste site <http://chromedriver.chromium.org/downloads>
 
 ### Para adicionar variáveis de ambiente no Windows
 
 Siga estes procedimentos:
+- No explorer clique no item 'Meu Computador' com o botão direito do mouse;
+- Escolhas as opções 'Propriedades' > 'Configurações avançadas do sistema' > 'Variáveis de ambiente'
+- Selecione a variável 'Path' e selecione a opção 'Editar'
+- Selecione 'Novo' e inclua o caminho até a pasta que contém o drive.
 
 ## Como o projeto foi gerado
 
