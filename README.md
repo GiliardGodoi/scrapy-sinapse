@@ -52,7 +52,7 @@ scrapy crawl ProjetoSinapse
 Personalizando parâmetros:
 
 ```python
-scrapy crawl quotes -o quotes-humor.json -a tag=humor
+scrapy crawl ProjetoSinapse -o projetos.json -a follow=True -a pages=3 --logfile output.log
 ```
 
 ## Referências
