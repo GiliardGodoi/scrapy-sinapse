@@ -15,10 +15,17 @@ import time
 import os
 
 
-class ProjetosinapseSpider(scrapy.Spider):
+class ProjetoSinapseSpider(scrapy.Spider):
     name = 'ProjetoSinapse'
     allowed_domains = ['pr1.sinapsedainovacao.com.br']
     start_urls = ['http://pr1.sinapsedainovacao.com.br/']
+
+    def closed(self, reason):
+        
+        if self.browser:
+            self.browser.close()
+            self.browser.quit()
+            self.browser = None
 
     def parse(self, response):
         # self.browser = webdriver.Chrome(executable_path='chromedriver.exe')
@@ -65,7 +72,7 @@ class ProjetosinapseSpider(scrapy.Spider):
         with open(diretorio, 'wb') as f:
             f.write(response.body)
 
-        soup = BeautifulSoup(response.body,'html.parser')
+        soup = BeautifulSoup(response.body,'html.parser',from_encoding="utf-8")
         content = soup.find_all("div",{"class":"content"})[0]
 
         children = content.select("h3, p")
