@@ -13,3 +13,7 @@ class ProjetoItem(scrapy.Item):
     titulo = scrapy.Field()
     problema = scrapy.Field()
     proposta = scrapy.Field()
+    observacoes = scrapy.Field()
+    # equipe = scrapy.Field()
+    atualizacao = scrapy.Field()
+    url_projeto = scrapy.Field()
