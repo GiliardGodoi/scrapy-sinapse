@@ -8,11 +8,11 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 
-from bs4 import BeautifulSoup
 import bs4
+from bs4 import BeautifulSoup
 from time import sleep
 from os import path
-from re import split as re_split
+import re
 
 
 class ProjetoSinapseSpider(scrapy.Spider):
@@ -21,11 +21,11 @@ class ProjetoSinapseSpider(scrapy.Spider):
     start_urls = ['http://pr1.sinapsedainovacao.com.br/']
 
     def closed(self, reason):
-        
-        if self.browser:
-            self.browser.close()
-            self.browser.quit()
-            self.browser = None
+        pass
+        # if self.browser:
+        #     self.browser.close()
+        #     self.browser.quit()
+        #     self.browser = None
 
     def parse(self, response):
         # self.browser = webdriver.Chrome(executable_path='chromedriver.exe')
@@ -38,7 +38,7 @@ class ProjetoSinapseSpider(scrapy.Spider):
         tamanho_lista = len(lista)
         qtd_paginas = lista[tamanho_lista-2].text
         qtd_paginas = int(qtd_paginas)
-        print('Quantidade de paginas: ',qtd_paginas)
+        
 
         URLS = self.get_links(self.browser.page_source,response.url)
 
@@ -50,9 +50,10 @@ class ProjetoSinapseSpider(scrapy.Spider):
         if follow_links : 
             qtd_total = getattr(self, 'pages', qtd_paginas)
             qtd_total = int(qtd_total)
+            print('Quantidade de paginas: ',qtd_total)
             
             for i in range(2,qtd_total):
-                sleep(5)
+                sleep(10)
                 pagination = self.browser.find_element_by_css_selector('ul.pagination')
                 caminho = f'//*/a[contains(text(),\'{i}\')]'
                 a = pagination.find_element_by_xpath(caminho)
@@ -65,25 +66,28 @@ class ProjetoSinapseSpider(scrapy.Spider):
                 for project_page in URLS:
                     yield scrapy.Request(project_page, callback=self.parse_project_page)
 
+    
     def parse_project_page(self,response):
         page = response.url.split("/")[-1]
         filename = 'sinapse-%s.html' % page
         diretorio = path.join('data','web',filename)
-        with open(diretorio, 'wb') as f:
-            f.write(response.body)
+        try:
+            with open(diretorio, 'wb') as f:
+                f.write(response.body)
+        except FileNotFoundError:
+            with open(filename, 'wb') as f:
+                f.write(response.body)
 
         soup = BeautifulSoup(response.body,'html.parser',from_encoding="utf-8")
         
         projeto = dict()
         projeto["url_projeto"] = response.url
 
-        projeto.update(get_data_from_div_media_body(soup))
-        projeto.update(get_data_from_div_content(soup))
-        projeto.update(get_data_from_div_sidebar(soup))
+        projeto.update(self.get_data_from_div_media_body(soup))
+        projeto.update(self.get_data_from_div_content(soup))
+        projeto.update(self.get_data_from_div_sidebar(soup))
+        projeto.update(self.get_data_from_div_well(soup))
 
-        texto = soup.find('div','well').get_text().strip()
-        indice = texto.rfind('em ')
-        projeto["atualizado"] = texto[indice:]
 
         yield projeto
 
@@ -103,75 +107,133 @@ class ProjetoSinapseSpider(scrapy.Spider):
         return list_urls
 
 
-def get_data_from_div_media_body(soup):
-    data = dict()
-    data.setdefault('comentarios','0')
-    data.setdefault('favoritos','0')
-    div = soup.find('div',attrs={'class' : 'media-body'})
-    data['titulo'] = div.h1.string
-    data['categoria'] = div.a.string
+    def get_data_from_div_media_body(self,soup):
+        data = dict()
+        data.setdefault('comentarios','0')
+        data.setdefault('favoritos','0')
+        div = soup.find('div',attrs={'class' : 'media-body'})
+        data['titulo'] = div.h1.string
+        data['categoria'] = div.a.string
 
-    for element in div.find_all('span'):
-        if isinstance(element,bs4.element.Tag):
-                if element.string == 'Setores:':
-                    tmp = element.next_sibling.strip('[\n\t ]+')
-                    data['setor'] = tmp.split('/')
-                elif element.string == 'Região':
-                    data['regiao'] = element.next_sibling.strip('[\n\t ]+')
-                elif element.get('title') == 'Favoritada':
-                    if element.text.strip():
-                        data['favoritos'] = element.text.strip()
+        for element in div.find_all('span'):
+            if isinstance(element,bs4.element.Tag):
+                    if element.string == 'Setores:':
+                        tmp = element.next_sibling.strip('[\n\t ]+')
+                        data['setor'] = tmp.split('/')
+                    elif element.string == 'Região':
+                        data['regiao'] = element.next_sibling.strip('[\n\t ]+')
+                    elif element.get('title') == 'Favoritada':
+                        if element.text.strip():
+                            data['favoritos'] = element.text.strip()
 
-    link = div.find('a',attrs={'class': 'count'})
-    if link.text.strip():
-        data['comentarios'] = link.text.strip()
+        link = div.find('a',attrs={'class': 'count'})
+        if link.text.strip():
+            data['comentarios'] = link.text.strip()
 
-    return data
+        return data
 
-def get_data_from_div_content(soup):
-    data = dict()
-    div = soup.find('div',attrs={'class':'content'})
-    children = div.select('h3, p')
+    def get_data_from_div_content(self,soup):
+        data = dict()
+        div = soup.find('div',attrs={'class':'content'})
+        children = div.select('h3, p')
 
-    schema = {
-        'Descrição do problema' : 'problema',
-        'Solução Proposta' : 'proposta',
-        'Estágio de desenvolvimento' : 'estagio',
-        'Diferenciais da Solução' : 'diferencial',
-        'Políticas públicas' : 'politicas'
-    }
-    for e in children:
-        if e.name == 'h3':
-            key = schema.get(e.string.strip(),'outros')
-        elif e.name == 'p':
-            if data.get(key,False):
-                ## key already exists
-                data[key] += e.text.strip('[\n\t ]+')
-            else :
-                ## key não existe previamente
-                data[key] = e.text.strip('[\n\t ]+')
+        schema = {
+            'Descrição do problema' : 'problema',
+            'Solução Proposta' : 'proposta',
+            'Estágio de desenvolvimento' : 'estagio',
+            'Diferenciais da Solução' : 'diferencial',
+            'Políticas públicas' : 'politicas'
+        }
+        for e in children:
+            if e.name == 'h3':
+                key = schema.get(e.string.strip(),'outros')
+            elif e.name == 'p':
+                if data.get(key,False):
+                    ## key already exists
+                    data[key] += e.text.strip('[\n\t ]+')
+                else :
+                    ## key não existe previamente
+                    data[key] = e.text.strip('[\n\t ]+')
 
-    return data
-
-
-def get_data_from_div_sidebar(soup):
-    data = dict()
-
-    div = soup.find('div',attrs={'class':'sidebar'})
-    text = div.text.strip('[\n\t ]+')
-    texts = re_split('[\n\t]+',text)
-    sobre, cidade, nome, *resto = texts
-    del sobre
-
-    data['cidade'] = cidade.replace('Cidade:','').strip()
-    data['nome'] = nome
-    resto = ' '.join(resto)
-    resto = resto.replace('pt_BR','').replace('Compartilhe essa Ideia','').replace('Tweetar','').strip()
-    data['sobre'] = resto
-
-    return data
+        return data
 
 
+    def get_data_from_div_sidebar(self, soup):
+        data = dict()
+        data.setdefault('autoria',None)
+        data.setdefault('cidade', None)
 
+        div = soup.find('div',attrs={'class':'sidebar'})
+        
+        cidade = div.div.string.strip()
+        data['cidade'] = cidade.replace('Cidade:','').strip()
+
+        selection = div.select('h4, div.control-group')
+
+        autores = list()
+        try:
+            autor = dict()
+            for a in selection:
+                if a.name == 'h4':
+                    if 'name' in autor:
+                        autores.append(autor)
+                        autor = dict()
+                    texto = a.string
+                    texto = re.sub('[\n\t]+',' ',texto)
+                    texto = texto.strip()
+                    autor['name'] = texto
+                elif a.name == 'div':
+                    texto = a.text
+                    texto = re.sub('[\n\t]+',' ',texto)
+                    texto = texto.strip()
+                    if 'sobre' in autor:
+                        autor['sobre'] += texto
+                    else :
+                        autor['sobre'] = texto
+            autores.append(autor)
+        except TypeError as error:
+            raise TypeError(error)
+
+        data['autoria'] = autores
+
+        return data
+
+
+    def get_data_from_div_well(self, soup):
+        data = dict()
+        data.setdefault('data','')
+        data.setdefault('hora','')
+        data.setdefault('numero','')
+        data.setdefault('quantidade','')
+
+        texto = soup.find('div','well').get_text().strip()
+        regex_date = re.compile(r'\d{1,2}/\d{1,2}/\d{2,4}')
+        regex_time = re.compile(r'\d{1,2}:\d{1,2}')
+        
+        try:
+            data['data'] = regex_date.search(texto).group()
+        except AttributeError :
+            pass
+
+        try:
+            data['hora'] = regex_time.search(texto).group()
+        except AttributeError :
+            pass
+
+        try:
+            data['quantidade'] = re.compile(r'\d+').match(texto).group()
+        except AttributeError:
+            pass
+
+        try:
+            data['numero'] = re.compile(r'\d+.\d+').search(texto).group()
+        except AttributeError :
+            pass
+
+        return {'versao': data }
+
+
+
+    
 
 
