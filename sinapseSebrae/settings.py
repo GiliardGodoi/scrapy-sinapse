@@ -64,9 +64,9 @@ ROBOTSTXT_OBEY = True
 
 # Configure item pipelines
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'sinapseSebrae.pipelines.SinapsesebraePipeline': 300,
-#}
+ITEM_PIPELINES = {
+   'sinapseSebrae.pipelines.MongoPipeline': 300,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://doc.scrapy.org/en/latest/topics/autothrottle.html
@@ -92,3 +92,7 @@ ROBOTSTXT_OBEY = True
 # FEED_URI = ''
 # FEED_FORMAT = ''
 # FEED_EXPORT_ENCODING = 'utf-8'
+
+# MONGO DB DATA BASE CONFIGURATION
+MONGO_URI = 'localhost:27017'
+MONGO_DATABASE = 'sinapse_inovacao'
