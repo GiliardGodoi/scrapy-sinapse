@@ -20,13 +20,6 @@ class ProjetoSinapseSpider(scrapy.Spider):
     allowed_domains = ['pr1.sinapsedainovacao.com.br']
     start_urls = ['http://pr1.sinapsedainovacao.com.br/']
 
-    def closed(self, reason):
-        pass
-        # if self.browser:
-        #     self.browser.close()
-        #     self.browser.quit()
-        #     self.browser = None
-
     def parse(self, response):
         # self.browser = webdriver.Chrome(executable_path='chromedriver.exe')
         self.browser = webdriver.Chrome()
@@ -50,14 +43,22 @@ class ProjetoSinapseSpider(scrapy.Spider):
         if follow_links : 
             qtd_total = getattr(self, 'pages', qtd_paginas)
             qtd_total = int(qtd_total)
+
+            qtd_total = qtd_total if qtd_total <= qtd_paginas else qtd_paginas
+
             print('Quantidade de paginas: ',qtd_total)
+
             
-            for i in range(2,qtd_total):
-                sleep(10)
+            for _ in range(0,qtd_total):
+                sleep(20)
+                # pagination = self.browser.find_element_by_css_selector('ul.pagination')
+                # caminho = f'//*/a[contains(text(),\'{i}\')]'
+                # a = pagination.find_element_by_xpath(caminho)
+                # a.click()
                 pagination = self.browser.find_element_by_css_selector('ul.pagination')
-                caminho = f'//*/a[contains(text(),\'{i}\')]'
-                a = pagination.find_element_by_xpath(caminho)
-                a.click()
+
+                item_next = pagination.find_element_by_css_selector('li.active ~ li')
+                item_next.find_element_by_css_selector('a').click()
                 
                 element_present = EC.presence_of_element_located((By.CLASS_NAME, 'list-ideas-inner'))
                 WebDriverWait(self.browser, 10).until(element_present)
@@ -118,10 +119,10 @@ class ProjetoSinapseSpider(scrapy.Spider):
         for element in div.find_all('span'):
             if isinstance(element,bs4.element.Tag):
                     if element.string == 'Setores:':
-                        tmp = element.next_sibling.strip('[\n\t ]+')
-                        data['setor'] = tmp.split('/')
+                        tmp = element.next_sibling.strip('[\n\t\r ]+')
+                        data['setor'] = [ t.strip() for t in tmp.split('/') if isinstance(t,str) ]
                     elif element.string == 'Região':
-                        data['regiao'] = element.next_sibling.strip('[\n\t ]+')
+                        data['regiao'] = element.next_sibling.strip('[\n\t\r ]+')
                     elif element.get('title') == 'Favoritada':
                         if element.text.strip():
                             data['favoritos'] = element.text.strip()
@@ -144,16 +145,21 @@ class ProjetoSinapseSpider(scrapy.Spider):
             'Diferenciais da Solução' : 'diferencial',
             'Políticas públicas' : 'politicas'
         }
+
         for e in children:
             if e.name == 'h3':
                 key = schema.get(e.string.strip(),'outros')
             elif e.name == 'p':
                 if data.get(key,False):
                     ## key already exists
-                    data[key] += e.text.strip('[\n\t ]+')
+                    tmp = data[key]
+                    if isinstance(tmp,str) and tmp.endswith(' '):
+                        data[key] += e.text.strip('[\n\t\r ]+')
+                    else:
+                        data[key] += (' ' + e.text.strip('[\n\t\r ]+'))
                 else :
                     ## key não existe previamente
-                    data[key] = e.text.strip('[\n\t ]+')
+                    data[key] = e.text.strip('[\n\t\r ]+')
 
         return data
 
@@ -179,15 +185,15 @@ class ProjetoSinapseSpider(scrapy.Spider):
                         autores.append(autor)
                         autor = dict()
                     texto = a.string
-                    texto = re.sub('[\n\t]+',' ',texto)
+                    texto = re.sub('[\n\t\r]+',' ',texto)
                     texto = texto.strip()
                     autor['name'] = texto
                 elif a.name == 'div':
                     texto = a.text
-                    texto = re.sub('[\n\t]+',' ',texto)
+                    texto = re.sub('[\n\t\r]+',' ',texto)
                     texto = texto.strip()
                     if 'sobre' in autor:
-                        autor['sobre'] += texto
+                        autor['sobre'] += (' ' + texto)
                     else :
                         autor['sobre'] = texto
             autores.append(autor)
